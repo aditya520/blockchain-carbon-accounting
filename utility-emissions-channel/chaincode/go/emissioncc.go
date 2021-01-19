@@ -10,142 +10,87 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric-chaincode-go/shim"
+	"github.com/hyperledger/fabric-contract-api-go/contractapi"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 )
 
-/* Define the structure of Chaincode */
-
-type EmissionsContract struct{}
-
-// this is the input for emissions calculation
-type EmissionsCalcInput struct {
-	UtilityID      string `json:"utilityID"`
-	PartyID        string `json:"partyID"`
-	FromDate       string `json:"fromDate"`
-	ThruDate       string `json:"thruDate"`
-	EnergUseAmount string `json:"energyUseAmount"`
-	EnergyUseUom   string `json:"energyUseUom"`
-}
-
-// this is seed data for emissions factors used to calculate emissions based on audited utility data
-type UtilityEmissionsFactors struct {
-	UtilityID              string  `json:"utilityID"`
-	UtilityName            string  `json:"utilitName"`
-	Year                   string  `json:"year"`
-	Country                string  `json:"country"`
-	DivisionType           string  `json:"divisionType"`
-	DivisionId             string  `json:"divisionId"`
-	DivisionName           string  `json:"divisionName"`
-	NetGeneration          float32 `json:"netGeneration"`
-	NetGenerationUOM       string  `json:"netGenerationUOM"`
-	CO2EquivalentEmissions float32 `json:"CO2EquivalentEmissions"`
-	EmissionsUOM           string  `json:"emissionsUOM"`
-}
-
-type Value struct {
-	UtilityID                 string
-	PartyID                   string
-	FromDate                  string
-	ThruDate                  string
-	EnergUseAmount            string
-	EnergyUSeUom              string
-	CO2equivalentemissions    string
-	NetGeneration             string
-	Usage                     string
-	UsageuOM                  string
-	NetGenerationuOM          string
-	CO2equivalentemissionsuOM string
-	EmissionsuOM              string
+// EmissionsContract provides function for managing emission data
+type EmissionsContract struct {
+	contractapi.Contract
 }
 
 /* Compute Emission Amount */
 
-/* The Init Method is called when the chaincode is instiated by the BC */
-func (s *EmissionsContract) Init(APIstub shim.ChaincodeStubInterface) pb.Response {
-	return shim.Success(nil)
-}
-
-/* Invoke Function */
-
-func (s *EmissionsContract) Invoke(APIstub shim.ChaincodeStubInterface) pb.Response {
-
-	// Retrieve the requested chaincode function and args
-
-	function, args := APIstub.GetFunctionAndParameters()
-
-	// Requests
-	if function == "initLedger" {
-		return s.initLedger(APIstub)
-	} else if function == "getEmissionRecord" {
-		return s.getEmissionRecord(APIstub, args)
-	} else if function == "createEmissionRecord" {
-		return s.createEmissionRecord(APIstub, args)
-	} else if function == "compEmissionAmount" {
-		return s.compEmissionAmount(APIstub, args)
-	} else if function == "getHistory" {
-		return s.getHistory(APIstub, args)
-	}
-
-	return shim.Error("Invalid Chaincode function name.")
-}
-
-/* InitLegder */
-func (s *EmissionsContract) initLedger(APIstub shim.ChaincodeStubInterface) pb.Response {
-
+// InitLedger ...
+func (s *EmissionsContract) InitLedger(ctx contractapi.TransactionContextInterface) error {
 	// initial values - we assume there is some other service which got us this emission factor reading
 	// UtilityEmissionsFactors{UtilityID: "14328", Name: "Pacific Gas & Electric Co.", Year: "2018", Country: "USA",  DivisionType: "NERC", DivisionId: "WECC", DivisionName: "Western Electricity Coordinating Council", NetGeneration: 743291275, NetGenerationUOM: "MWH", CO2EquivalentEmissions: 288,021,204, EmissionsUOM: "TONS"
 
-	values := []Value{
-		Value{UtilityID: "Utility1", PartyID: "MyCOmpany1", FromDate: "2020-01-02", ThruDate: "2020-20-01", EnergUseAmount: "1650", EnergyUSeUom: "KWH", CO2equivalentemissions: "2543", NetGeneration: "5362", Usage: "3067", UsageuOM: "4676", NetGenerationuOM: "4676", CO2equivalentemissionsuOM: "257", EmissionsuOM: "140"},
-		Value{UtilityID: "Utility2", PartyID: "MyCOmpany2", FromDate: "2020-01-02", ThruDate: "2020-20-01", EnergUseAmount: "1750", EnergyUSeUom: "KWH", CO2equivalentemissions: "1062", NetGeneration: "235", Usage: "328", UsageuOM: "1846", NetGenerationuOM: "1946", CO2equivalentemissionsuOM: "1338", EmissionsuOM: "484"},
-		Value{UtilityID: "Utility3", PartyID: "MyCOmpany3", FromDate: "2020-01-02", ThruDate: "2020-20-01", EnergUseAmount: "1550", EnergyUSeUom: "KWH", CO2equivalentemissions: "7470", NetGeneration: "9549", Usage: "3335", UsageuOM: "9951", NetGenerationuOM: "951", CO2equivalentemissionsuOM: "7445", EmissionsuOM: "383"},
-		Value{UtilityID: "Utility4", PartyID: "MyCOmpany4", FromDate: "2020-01-02", ThruDate: "2020-20-01", EnergUseAmount: "1550", EnergyUSeUom: "KWH", CO2equivalentemissions: "2770", NetGeneration: "4554", Usage: "2855", UsageuOM: "8861", NetGenerationuOM: "881", CO2equivalentemissionsuOM: "2699", EmissionsuOM: "124"},
-		Value{UtilityID: "Utility5", PartyID: "MyCOmpany5", FromDate: "2020-01-02", ThruDate: "2020-20-01", EnergUseAmount: "1550", EnergyUSeUom: "KWH", CO2equivalentemissions: "3014", NetGeneration: "1162", Usage: "398", UsageuOM: "3368", NetGenerationuOM: "3368", CO2equivalentemissionsuOM: "318764", EmissionsuOM: "827"},
+	values := []EmissionsCalcInput{
+		EmissionsCalcInput{UtilityID: "Utility1", PartyID: "MyCOmpany1", FromDate: "2020-01-02", ThruDate: "2020-20-01", EnergUseAmount: "1650", EnergyUseUom: "KWH", CO2EquivalentEmissions: "2543", NetGeneration: "5362", Usage: "3067", UsageuOM: "4676", NetGenerationUOM: "4676", CO2equivalentEmissionsuOM: "257", EmissionsUOM: "140"},
+		EmissionsCalcInput{UtilityID: "Utility2", PartyID: "MyCOmpany2", FromDate: "2020-01-02", ThruDate: "2020-20-01", EnergUseAmount: "1750", EnergyUseUom: "KWH", CO2EquivalentEmissions: "1062", NetGeneration: "235", Usage: "328", UsageuOM: "1846", NetGenerationUOM: "1946", CO2equivalentEmissionsuOM: "1338", EmissionsUOM: "484"},
+		EmissionsCalcInput{UtilityID: "Utility3", PartyID: "MyCOmpany3", FromDate: "2020-01-02", ThruDate: "2020-20-01", EnergUseAmount: "1550", EnergyUseUom: "KWH", CO2EquivalentEmissions: "7470", NetGeneration: "9549", Usage: "3335", UsageuOM: "9951", NetGenerationUOM: "951", CO2equivalentEmissionsuOM: "7445", EmissionsUOM: "383"},
+		EmissionsCalcInput{UtilityID: "Utility4", PartyID: "MyCOmpany4", FromDate: "2020-01-02", ThruDate: "2020-20-01", EnergUseAmount: "1550", EnergyUseUom: "KWH", CO2EquivalentEmissions: "2770", NetGeneration: "4554", Usage: "2855", UsageuOM: "8861", NetGenerationUOM: "881", CO2equivalentEmissionsuOM: "2699", EmissionsUOM: "124"},
+		EmissionsCalcInput{UtilityID: "Utility5", PartyID: "MyCOmpany5", FromDate: "2020-01-02", ThruDate: "2020-20-01", EnergUseAmount: "1550", EnergyUseUom: "KWH", CO2EquivalentEmissions: "3014", NetGeneration: "1162", Usage: "398", UsageuOM: "3368", NetGenerationUOM: "3368", CO2equivalentEmissionsuOM: "318764", EmissionsUOM: "827"},
 	}
-	i := 0
-	for i < len(values) {
+
+	for i := 0; i < len(values); i = i + 1 {
 		fmt.Println("i is ", i)
 		valuesAsBytes, _ := json.Marshal(values[i])
-		APIstub.PutState("Utility"+strconv.Itoa(i), valuesAsBytes)
+		err := ctx.GetStub().PutState("Utility"+strconv.Itoa(i), valuesAsBytes)
+		if err != nil {
+			return fmt.Errorf("Failed to put to world state. %s", err.Error())
+		}
 		fmt.Println("Added", values[i])
-		i = i + 1
 	}
-	return shim.Success(nil)
+	return nil
 }
 
 /* Create an new entry UtilityID  */
 
-func (s *EmissionsContract) createEmissionRecord(APIstub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (s *EmissionsContract) createEmissionRecord(ctx contractapi.TransactionContextInterface, args []string) error {
 	if len(args) != 13 {
 		return shim.Error("invalid number of arguments. Expect 13")
 	}
 
 	utilityID := args[0]
 
-	var values = Value{UtilityID: args[0], PartyID: args[1], FromDate: args[2], ThruDate: args[3], EnergUseAmount: args[4], EnergyUSeUom: args[5], CO2equivalentemissions: args[6], NetGeneration: args[7], Usage: args[8], UsageuOM: args[9], NetGenerationuOM: args[10], CO2equivalentemissionsuOM: args[11], EmissionsuOM: args[12]}
+	var values = EmissionsCalcInput{UtilityID: args[0], PartyID: args[1], FromDate: args[2], ThruDate: args[3], EnergUseAmount: args[4], EnergyUseUom: args[5], CO2EquivalentEmissions: args[6], NetGeneration: args[7], Usage: args[8], UsageuOM: args[9], NetGenerationUOM: args[10], CO2equivalentEmissionsuOM: args[11], EmissionsUOM: args[12]}
 
 	valuesAsBytes, _ := json.Marshal(values)
-	APIstub.PutState(utilityID, valuesAsBytes)
-	return shim.Success(nil)
+	err := ctx.GetStub().PutState(utilityID, valuesAsBytes)
+	if err != nil {
+		return fmt.Errorf("Failed to put to world state. %s", err.Error())
+	}
+
+	return nil
 }
 
 /* Query a Value of Utility*/
 
-func (s *EmissionsContract) getEmissionRecord(APIstub shim.ChaincodeStubInterface, args []string) pb.Response {
-	if len(args) != 1 {
-		return shim.Error("Incorrect number of argument. Expect 1")
-	}
+func (s *EmissionsContract) getEmissionRecord(ctx contractapi.TransactionContextInterface, utilityID string) (*EmissionsCalcInput, error) {
 
-	valuesAsBytes, _ := APIstub.GetState(args[0])
+	valuesAsBytes, err := ctx.GetStub().GetState(utilityID)
 
 	return shim.Success(valuesAsBytes)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to read from world state. %s", err.Error())
+	}
+
+	if valuesAsBytes == nil {
+		return nil, fmt.Errorf("%s No emissionrecord exist for %s ", utilityID)
+	}
+
+	EmissionRecord := &EmissionsCalcInput{}
+	_ = json.Unmarshal(valuesAsBytes, EmissionRecord)
+
+	return EmissionRecord, nil
 }
 
-func (s *EmissionsContract) compEmissionAmount(APIstub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (s *EmissionsContract) compEmissionAmount(ctx contractapi.TransactionContextInterface, args []string) pb.Response {
 	if len(args) != 1 {
 		return shim.Error("In correct number of argument. Expect 1")
 	}
-
 	valuesAsBytes, _ := APIstub.GetState(args[0])
 
 	record := Value{}
@@ -245,8 +190,13 @@ func (s *EmissionsContract) getHistory(APIstub shim.ChaincodeStubInterface, args
 /* main function */
 
 func main() {
-	err := shim.Start(new(EmissionsContract))
+	chaincode, err := contractapi.NewChaincode(new(EmissionsContract))
 	if err != nil {
-		fmt.Printf("Error to start new SC", err)
+		fmt.Printf("Error creating Emission chaincode: %s", err.Error())
+		return
+	}
+
+	if err := chaincode.Start(); err != nil {
+		fmt.Printf("Error starting Emission chaincode: %s", err.Error())
 	}
 }
